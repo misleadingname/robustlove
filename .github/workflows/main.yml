@@ -57,7 +57,7 @@ jobs:
     - name: Replace LuaJIT with robustmegasource version
       run: |
         rm -rf love2d-${{ github.sha }}/libraries/LuaJIT*
-        cp -r robustmegasource/LuaJIT love2d-${{ github.sha }}/libraries/LuaJIT
+        cp -r /home/runner/work/robustlove/robustlove/robustmegasource/LuaJIT love2d-${{ github.sha }}/libraries/LuaJIT
 
     - name: Get Dependencies for AppImage
       shell: python
