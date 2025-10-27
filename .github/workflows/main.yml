@@ -295,7 +295,7 @@ jobs:
                   --source %CD%\build\libs\LuaJIT https://raw.githubusercontent.com/misleadingname/robustmegasource/${{ steps.megasource.outputs.commit }}/libs/LuaJIT ^
                   pdb\Release\*.pdb
             - name: Publish version
-              run: ../tools/publish.py
+              run: "%CD%/tools/publish.py"
               env:
                   PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
                   GITHUB_REPOSITORY: ${{ vars.GITHUB_REPOSITORY }}
