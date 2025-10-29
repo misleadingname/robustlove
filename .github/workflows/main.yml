@@ -294,11 +294,11 @@ jobs:
                   --source %CD%\megasource https://raw.githubusercontent.com/misleadingname/robustmegasource/${{ steps.megasource.outputs.commit }} ^
                   --source %CD%\build\libs\LuaJIT https://raw.githubusercontent.com/misleadingname/robustmegasource/${{ steps.megasource.outputs.commit }}/libs/LuaJIT ^
                   pdb\Release\*.pdb
-            - name: Publish version
-              run: "python ../tools/publish.py"
-              env:
-                  PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-                  GITHUB_REPOSITORY: ${{ vars.GITHUB_REPOSITORY }}
+            #- name: Publish version
+            #  run: "python ../tools/publish.py"
+            #  env:
+            #      PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+            #      GITHUB_REPOSITORY: ${{ vars.GITHUB_REPOSITORY }}
             - name: Artifact
               uses: actions/upload-artifact@v4
               with:
