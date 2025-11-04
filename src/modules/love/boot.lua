@@ -39,6 +39,26 @@ local no_game_code = false
 local invalid_game_path = nil
 local main_file = "main.lua"
 
+-- the lobotomizer....
+local function lobotomize(name)
+    function disabled(...) return error(string.format("%s is disabled in rl.", name)) end
+    package.preload[name] = disabled
+    if package.loaded[name] then
+        package.loaded[name] = setmetatable({}, {
+            __index = disabled,
+            __newindex = disabled,
+            __call = disabled
+        })
+    end
+
+    if _G[name] ~= nil then
+        _G[name] = setmetatable({}, {
+            __index = disabled,
+            __newindex = disabled
+        })
+    end
+end
+
 -- This can't be overridden.
 function love.boot()
 
@@ -160,6 +180,8 @@ usage:
 end
 
 function love.init()
+    -- oh we're starting a game!
+    lobotomize("ffi")
 
 	-- Create default configuration settings.
 	-- NOTE: Adding a new module to the modules list
