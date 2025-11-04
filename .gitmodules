@@ -1,0 +1,24 @@
+[submodule "libs/libmodplug"]
+	path = libs/libmodplug
+	url = https://github.com/Konstanty/libmodplug.git
+[submodule "libs/SDL"]
+	path = libs/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "libs/zlib"]
+	path = libs/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "libs/theora"]
+	path = libs/theora
+	url = https://gitlab.xiph.org/xiph/theora.git
+[submodule "libs/vorbis"]
+	path = libs/vorbis
+	url = https://github.com/xiph/vorbis.git
+[submodule "libs/openal-soft"]
+	path = libs/openal-soft
+	url = https://github.com/kcat/openal-soft.git
+[submodule "libs/freetype"]
+	path = libs/freetype
+	url = https://gitlab.freedesktop.org/freetype/freetype.git
+[submodule "libs/harfbuzz"]
+	path = libs/harfbuzz
+	url = https://github.com/harfbuzz/harfbuzz.git

@@ -65,22 +65,23 @@ static const luaL_Reg functions[] =
 
 extern "C" int luaopen_love_video(lua_State *L)
 {
-	Video *instance = instance();
-	if (instance == nullptr)
-	{
-		luax_catchexcept(L, [&](){ instance = new love::video::theora::Video(); });
-	}
-	else
-		instance->retain();
-
-	WrappedModule w;
-	w.module = instance;
-	w.name = "video";
-	w.type = &Module::type;
-	w.functions = functions;
-	w.types = types;
-
-	return luax_register_module(L, w);
+	// Video *instance = instance();
+	// if (instance == nullptr)
+	// {
+	// 	luax_catchexcept(L, [&](){ instance = new love::video::theora::Video(); });
+	// }
+	// else
+	// 	instance->retain();
+	//
+	// WrappedModule w;
+	// w.module = instance;
+	// w.name = "video";
+	// w.type = &Module::type;
+	// w.functions = functions;
+	// w.types = types;
+	//
+	// return luax_register_module(L, w);
+	return 0;
 }
 
 } // video

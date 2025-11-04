@@ -2,7 +2,8 @@
 Name=LÖVE
 Comment=The unquestionably awesome 2D game engine
 MimeType=application/x-love-game;
-Exec=@CMAKE_INSTALL_FULL_BINDIR@/love %f
+#Exec=@CMAKE_INSTALL_FULL_BINDIR@/love %f
+Exec=love %f
 Type=Application
 Categories=Development;Game;
 Terminal=false
