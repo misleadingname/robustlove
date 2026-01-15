@@ -30,7 +30,7 @@
 #include "sound/Decoder.h"
 
 // libmodplug
-#if defined(LOVE_ANDROID) || defined(LOVE_IOS)
+#if defined(LOVE_ANDROID) || defined(LOVE_IOS) || defined(BUILTIN_MODPLUG)
 #include <modplug.h>
 #else
 #include <libmodplug/modplug.h>

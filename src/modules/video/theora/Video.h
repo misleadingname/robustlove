@@ -29,7 +29,7 @@
 #include "video/Video.h"
 #include "thread/threads.h"
 #include "video/VideoStream.h"
-#include "TheoraVideoStream.h"
+// #include "TheoraVideoStream.h"
 
 namespace love
 {
@@ -61,13 +61,13 @@ public:
 	// Implements Threadable
 	void threadFunction();
 
-	void addStream(TheoraVideoStream *stream);
+	// void addStream(TheoraVideoStream *stream);
 	// Frees itself!
 	void stop();
 
 private:
 
-	std::vector<StrongRef<TheoraVideoStream>> streams;
+	// std::vector<StrongRef<TheoraVideoStream>> streams;
 
 	love::thread::MutexRef mutex;
 	love::thread::ConditionalRef cond;

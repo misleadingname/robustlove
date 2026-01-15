@@ -32,17 +32,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE) # Needed for shared libs on Linux. (-f
 set(CMAKE_CXX_STANDARD 17)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)	# Allow grouping projects in Visual Studio
 
-if(APPLE)
-	message(WARNING "CMake is not an officially supported build system for love on Apple platforms.")
-	message(WARNING "Use the prebuilt .app or the xcode project in platform/xcode/ instead.")
-endif()
-
 if(MINGW)
 	message(WARNING "MinGW is not an officially supported build system for love.")
 	message(WARNING "Use megasource with Visual Studio instead.")
 	message(WARNING "Please see https://github.com/love2d/megasource")
 endif()
 
+include(ExternalProject)
 include(LoveMacros)
 
 # Extract version.h contents.
@@ -81,24 +77,6 @@ else()
 	set(LOVE_TARGET_PLATFORM x86)
 endif()
 
-
-if(APPLE)
-	set(LOVE_DEFAULT_JIT FALSE)
-else()
-	set(LOVE_DEFAULT_JIT TRUE)
-endif()
-
-option(LOVE_JIT "Use LuaJIT" ${LOVE_DEFAULT_JIT})
-
-if(LOVE_JIT)
-	if(APPLE)
-		message(WARNING "JIT not supported yet on Mac.")
-	endif()
-	message(STATUS "LuaJIT: Enabled")
-else()
-	message(STATUS "LuaJIT: Disabled")
-endif()
-
 message(STATUS "Target platform: ${LOVE_TARGET_PLATFORM}")
 
 add_library(lovedep::SDL INTERFACE IMPORTED)
@@ -112,115 +90,268 @@ add_library(lovedep::Ogg INTERFACE IMPORTED)
 add_library(lovedep::Zlib INTERFACE IMPORTED)
 add_library(lovedep::Lua INTERFACE IMPORTED)
 
-if(MEGA)
-	# LOVE_MSVC_DLLS contains runtime DLLs that should be bundled with the love
-	# binary (in e.g. the installer). Example: msvcp140.dll.
-	set(LOVE_MSVC_DLLS ${MEGA_MSVC_DLLS})
+#if(MEGA)
+#	# LOVE_MSVC_DLLS contains runtime DLLs that should be bundled with the love
+#	# binary (in e.g. the installer). Example: msvcp140.dll.
+#	set(LOVE_MSVC_DLLS ${MEGA_MSVC_DLLS})
+#
+#	# These DLLs are moved next to the love binary in a post-build step to
+#	# love runnable from inside Visual Studio.
+#	#
+#	# LOVE_MOVE_DLLS can contain CMake targets, in which case the target's
+#	# output is assumed to be a DLL, or it can contain paths to actual files.
+#	# We detect whether or not each item is a target, and take the appropriate
+#	# action.
+#	set(LOVE_MOVE_DLLS
+#		${MEGA_SDL3}
+#		${MEGA_OPENAL}
+#	)
+#
+#	# LOVE_EXTRA_DLLS are non-runtime DLLs which should be bundled with the
+#	# love binary in installers, etc. It's only needed for external
+#	# (non-CMake) targets, i.e. LuaJIT.
+#	if(NOT DEFINED LOVE_EXTRA_DLLS)
+#		set(LOVE_EXTRA_DLLS)
+#	endif()
+#else()
+#	if(MSVC OR ANDROID)
+#		message(FATAL_ERROR "
+#It is currently only possible to build with megasource on Windows and Android.
+#Please see https://github.com/love2d/megasource
+#")
+#	endif()
+#
+#	# required for enet
+#	add_definitions(-D HAS_SOCKLEN_T)
+#endif()
 
-	# These DLLs are moved next to the love binary in a post-build step to
-	# love runnable from inside Visual Studio.
-	#
-	# LOVE_MOVE_DLLS can contain CMake targets, in which case the target's
-	# output is assumed to be a DLL, or it can contain paths to actual files.
-	# We detect whether or not each item is a target, and take the appropriate
-	# action.
-	set(LOVE_MOVE_DLLS
-		${MEGA_SDL3}
-		${MEGA_OPENAL}
-	)
+set(LOVE_MOVE_DLLS)
 
-	# LOVE_EXTRA_DLLS are non-runtime DLLs which should be bundled with the
-	# love binary in installers, etc. It's only needed for external
-	# (non-CMake) targets, i.e. LuaJIT.
-	if(NOT DEFINED LOVE_EXTRA_DLLS)
-		set(LOVE_EXTRA_DLLS)
-	endif()
+add_definitions(-D HAS_SOCKLEN_T)
 
-	target_link_libraries(lovedep::SDL INTERFACE ${MEGA_SDL3})
-	target_link_libraries(lovedep::Freetype INTERFACE ${MEGA_FREETYPE})
-	target_link_libraries(lovedep::Harfbuzz INTERFACE ${MEGA_HARFBUZZ})
-	target_link_libraries(lovedep::OpenAL INTERFACE ${MEGA_OPENAL})
-	target_link_libraries(lovedep::Modplug INTERFACE ${MEGA_MODPLUG})
-	target_link_libraries(lovedep::Theora INTERFACE ${MEGA_LIBTHEORA})
-	target_link_libraries(lovedep::Vorbis INTERFACE ${MEGA_LIBVORBIS} ${MEGA_LIBVORBISFILE})
-	target_link_libraries(lovedep::Ogg INTERFACE ${MEGA_LIBOGG})
-	target_link_libraries(lovedep::Zlib INTERFACE ${MEGA_ZLIB})
+set(BUILTIN_MODPLUG ON)
+set(BUILTIN_SDL3 ON)
+set(BUILTIN_ZLIB ON)
+set(BUILTIN_LIBOGG ON)
+set(BUILTIN_THEORA ON)
+set(BUILTIN_LIBVORBIS ON)
+set(BUILTIN_OPENAL ON)
+set(BUILTIN_HARFBUZZ ON)
+set(BUILTIN_FREETYPE ON)
 
-	if(LOVE_JIT)
-		target_include_directories(lovedep::Lua INTERFACE ${MEGA_LUAJIT_INCLUDE})
-		target_link_libraries(lovedep::Lua INTERFACE ${MEGA_LUAJIT_LIB})
-		set(LOVE_EXTRA_DLLS ${LOVE_EXTRA_DLLS} ${MEGA_LUAJIT_DLL})
-		set(LOVE_EXTRA_DEPENDECIES luajit)
-		set(LOVE_MOVE_DLLS
-			${LOVE_MOVE_DLLS}
-			${MEGA_LUAJIT_DLL}
-		)
-	else()
-		# MEGA_LUA51 is a CMake target, so includes are handled
-		# automatically.
-		target_link_libraries(lovedep::Lua INTERFACE ${MEGA_LUA51})
-		set(LOVE_MOVE_DLLS
-			${LOVE_MOVE_DLLS}
-			${MEGA_LUA51}
-		)
-	endif()
+# libmodplug
+message(STATUS "Configuring: libmodplug")
+if(BUILTIN_MODPLUG)
+	set(MODPLUG_BUILD_STATIC ON)
+	add_subdirectory(libs/libmodplug EXCLUDE_FROM_ALL)
+	target_include_directories(lovedep::Modplug INTERFACE libs/libmodplug/src)
+	target_link_libraries(lovedep::Modplug INTERFACE modplug)
+	target_compile_definitions(lovedep::Modplug INTERFACE BUILTIN_MODPLUG)
+
+	if(MSVC)
+		target_compile_definitions(lovedep::Modplug INTERFACE MODPLUG_STATIC)
+	endif ()
 else()
-	if(MSVC OR ANDROID)
-		message(FATAL_ERROR "
-It is currently only possible to build with megasource on Windows and Android.
-Please see https://github.com/love2d/megasource
-")
-	endif()
+	find_package(ModPlug REQUIRED)
+#	target_include_directories(lovedep::Modplug INTERFACE ${MODPLUG_INCLUDE_DIR})
+	target_link_libraries(lovedep::Modplug INTERFACE ${MODPLUG_LIBRARY})
+endif ()
 
-	# required for enet
-	add_definitions(-D HAS_SOCKLEN_T)
-
+# SDL3
+message(STATUS "Configuring: SDL3")
+if(BUILTIN_SDL3)
+	add_subdirectory(libs/SDL EXCLUDE_FROM_ALL)
+#	target_include_directories(lovedep::SDL INTERFACE libs/SDL/include)
+	target_link_libraries(lovedep::SDL INTERFACE SDL3-static)
+else()
 	find_package(SDL3 3.1.3 REQUIRED CONFIG)
 	target_include_directories(lovedep::SDL INTERFACE ${SDL3_INCLUDE_DIRS})
 	target_link_libraries(lovedep::SDL INTERFACE ${SDL3_LIBRARIES})
+endif ()
 
-	find_package(Freetype REQUIRED)
-	target_include_directories(lovedep::Freetype INTERFACE ${FREETYPE_INCLUDE_DIRS})
-	target_link_libraries(lovedep::Freetype INTERFACE ${FREETYPE_LIBRARY})
-
-	find_package(Harfbuzz REQUIRED)
-	target_include_directories(lovedep::Harfbuzz INTERFACE ${HARFBUZZ_INCLUDE_DIR})
-	target_link_libraries(lovedep::Harfbuzz INTERFACE ${HARFBUZZ_LIBRARY})
-
-	find_package(OpenAL REQUIRED)
-	target_include_directories(lovedep::OpenAL INTERFACE ${OPENAL_INCLUDE_DIR})
-	target_link_libraries(lovedep::OpenAL INTERFACE ${OPENAL_LIBRARY})
-
-	find_package(ModPlug REQUIRED)
-	target_include_directories(lovedep::Modplug INTERFACE ${MODPLUG_INCLUDE_DIR})
-	target_link_libraries(lovedep::Modplug INTERFACE ${MODPLUG_LIBRARY})
-
-	find_package(Theora REQUIRED)
-	target_include_directories(lovedep::Theora INTERFACE ${THEORA_INCLUDE_DIR})
-	target_link_libraries(lovedep::Theora INTERFACE ${THEORA_LIBRARY} ${THEORADEC_LIBRARY})
-
-	find_package(Vorbis REQUIRED)
-	target_include_directories(lovedep::Vorbis INTERFACE ${VORBIS_INCLUDE_DIR})
-	target_link_libraries(lovedep::Vorbis INTERFACE ${VORBISFILE_LIBRARY})
-
-	find_package(Ogg REQUIRED)
-	target_include_directories(lovedep::Ogg INTERFACE ${OGG_INCLUDE_DIR})
-	target_link_libraries(lovedep::Ogg INTERFACE ${OGG_LIBRARY})
-
+# ZLIB
+message(STATUS "Configuring: ZLIB")
+if(BUILTIN_ZLIB)
+	set(LIBTYPE STATIC)
+	add_subdirectory(libs/zlib EXCLUDE_FROM_ALL)
+	target_include_directories(lovedep::Zlib INTERFACE libs/zlib/)
+	target_link_libraries(lovedep::Zlib INTERFACE zlibstatic)
+else()
 	find_package(ZLIB REQUIRED)
 	target_include_directories(lovedep::Zlib INTERFACE ${ZLIB_INCLUDE_DIRS})
 	target_link_libraries(lovedep::Zlib INTERFACE ${ZLIB_LIBRARY})
+endif ()
 
-	if(LOVE_JIT)
-		find_package(LuaJIT REQUIRED)
-		target_include_directories(lovedep::Lua INTERFACE ${LUAJIT_INCLUDE_DIR})
-		target_link_libraries(lovedep::Lua INTERFACE ${LUAJIT_LIBRARY})
-	else()
-		find_package(Lua51 REQUIRED)
-		target_include_directories(lovedep::Lua INTERFACE ${LUA_INCLUDE_DIR})
-		target_link_libraries(lovedep::Lua INTERFACE ${LUA_LIBRARY})
-	endif()
+# LibOgg
+message(STATUS "Configuring: libogg")
+if(BUILTIN_LIBOGG)
+	add_subdirectory(libs/libogg EXCLUDE_FROM_ALL)
+	target_include_directories(lovedep::Ogg INTERFACE libs/libogg/)
+	target_link_libraries(lovedep::Ogg INTERFACE Ogg::ogg)
+else()
+	find_package(Ogg REQUIRED)
+	target_include_directories(lovedep::Ogg INTERFACE ${OGG_INCLUDE_DIR})
+	target_link_libraries(lovedep::Ogg INTERFACE ${OGG_LIBRARY})
+endif ()
+
+# LibVorbis
+message(STATUS "Configuring: liborbis")
+if(BUILTIN_LIBVORBIS)
+	add_subdirectory(libs/vorbis EXCLUDE_FROM_ALL)
+#	target_include_directories(lovedep::Vorbis INTERFACE libs/vorbis/include/)
+	target_link_libraries(lovedep::Vorbis INTERFACE vorbis vorbisfile)
+else()
+	find_package(Vorbis REQUIRED)
+	target_include_directories(lovedep::Vorbis INTERFACE ${VORBIS_INCLUDE_DIR})
+	target_link_libraries(lovedep::Vorbis INTERFACE ${VORBISFILE_LIBRARY})
+endif ()
+
+# OpenAL
+message(STATUS "Configuring: openal")
+if(BUILTIN_OPENAL)
+	set(LIBTYPE STATIC)
+	add_subdirectory(libs/openal-soft EXCLUDE_FROM_ALL)
+#	target_include_directories(lovedep::OpenAL INTERFACE libs/vorbis/include/)
+	target_link_libraries(lovedep::OpenAL INTERFACE OpenAL::OpenAL)
+else()
+	find_package(OpenAL REQUIRED)
+	target_include_directories(lovedep::OpenAL INTERFACE ${OPENAL_INCLUDE_DIR})
+	target_link_libraries(lovedep::OpenAL INTERFACE ${OPENAL_LIBRARY})
+endif ()
+
+# Freetype
+message(STATUS "Configuring: freetype")
+if(BUILTIN_FREETYPE)
+	set(LIBTYPE STATIC)
+	add_subdirectory(libs/freetype EXCLUDE_FROM_ALL)
+	#	target_include_directories(lovedep::OpenAL INTERFACE libs/vorbis/include/)
+	target_link_libraries(lovedep::Freetype INTERFACE freetype)
+else()
+	find_package(Freetype REQUIRED)
+	target_include_directories(lovedep::Freetype INTERFACE ${FREETYPE_INCLUDE_DIRS})
+	target_link_libraries(lovedep::Freetype INTERFACE ${FREETYPE_LIBRARY})
+endif ()
+
+# Harfbuzz
+message(STATUS "Configuring: harfbuzz")
+if(BUILTIN_HARFBUZZ)
+	set(LIBTYPE STATIC)
+	add_subdirectory(libs/harfbuzz EXCLUDE_FROM_ALL)
+#		target_include_directories(lovedep::OpenAL INTERFACE libs/harfbuzz/)
+	target_link_libraries(lovedep::Harfbuzz INTERFACE harfbuzz)
+else()
+	find_package(Harfbuzz REQUIRED)
+	target_include_directories(lovedep::Harfbuzz INTERFACE ${HARFBUZZ_INCLUDE_DIR})
+	target_link_libraries(lovedep::Harfbuzz INTERFACE ${HARFBUZZ_LIBRARY})
+endif ()
+
+# LuaJIT
+message(STATUS "Configuring: LuaJIT")
+if(MSVC)
+	set(LUAJIT_DIR "luajit")
+
+	# Copy LuaJIT source to binary dir. LuaJIT builds in-source,
+	# and we don't want to modify the original source tree, so
+	# we copy it.
+	file(COPY libs/${LUAJIT_DIR} DESTINATION ${CMAKE_BINARY_DIR}/libs)
+
+	set(LUAJIT_SOURCE_DIR ${CMAKE_BINARY_DIR}/libs/${LUAJIT_DIR})
+
+	set(MEGA_LUAJIT_BUILD_BAT "
+		if not defined DevEnvDir (
+			call \"${MEGA_MSVC_VCVARSALL_BAT}\" ${MEGA_MSVC_VCVARSALL_BAT_ARG}
+		)
+		cd \"${LUAJIT_SOURCE_DIR}/src\"
+		cl
+		msvcbuild.bat amalg
+	")
+
+	file(WRITE ${LUAJIT_SOURCE_DIR}/build.bat ${MEGA_LUAJIT_BUILD_BAT})
+
+	ExternalProject_Add(luajit
+			SOURCE_DIR ${LUAJIT_SOURCE_DIR}
+			BUILD_IN_SOURCE 1
+			CONFIGURE_COMMAND ""
+			BUILD_COMMAND "${LUAJIT_SOURCE_DIR}/build.bat"
+			INSTALL_COMMAND cmake -E make_directory ${CMAKE_BINARY_DIR}/bin
+			COMMAND cmake -E copy ${LUAJIT_SOURCE_DIR}/src/lua51.dll ${CMAKE_BINARY_DIR}/bin
+			COMMAND cmake -E copy ${LUAJIT_SOURCE_DIR}/src/lua51.lib ${CMAKE_BINARY_DIR}/bin
+			BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/bin/lua51.lib" "${CMAKE_BINARY_DIR}/bin/lua51.dll"
+	)
+	set_target_properties(luajit PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${LUAJIT_SOURCE_DIR}/src"
+			IMPORTED_IMPLIB "${CMAKE_BINARY_DIR}/bin/lua51.lib"
+			IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/bin/lua51.dll"
+	)
+	set(LUAJIT_LIB ${CMAKE_BINARY_DIR}/bin/lua51.lib)
+	set(LUAJIT_DLL ${CMAKE_BINARY_DIR}/bin/lua51.dll)
+	set(LUAJIT_INCLUDE ${LUAJIT_SOURCE_DIR}/src)
+
+	set(LOVE_MOVE_DLLS
+			${LOVE_MOVE_DLLS}
+			${MEGA_LUAJIT_DLL}
+	)
+elseif(ANDROID)
+	# TODO: Build for android
+	# LuaJIT is prebuilt in Android
+	set(LUAJIT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs/luajit")
+
+	add_library(luajit IMPORTED SHARED GLOBAL)
+	set_target_properties(luajit PROPERTIES
+			IMPORTED_LOCATION ${LUAJIT_DIR}/android/${ANDROID_ABI}/libluajit.so
+	)
+	target_include_directories(luajit INTERFACE ${LUAJIT_DIR}/src ${LUAJIT_DIR}/android/${ANDROID_ABI})
+	set(LUAJIT_LIB ${LUAJIT_DIR}/android/${ANDROID_ABI}/libluajit.so)
+	set(LUAJIT_DLL)
+	set(LUAJIT_INCLUDE ${LUAJIT_DIR}/src ${LUAJIT_DIR}/android/${ANDROID_ABI})
+	set(LUA_FOUND ON)
+	set(LUA_INCLUDE_DIR ${LUAJIT_INCLUDE})
+	set(LUA_LIBRARY luajit)
+	set(LUA_VERSION_MAJOR 5)
+	set(LUA_VERSION_MINOR 1)
+	set(LUA_VERSION_PATCH 5)
+elseif(LINUX)
+	set(LUAJIT_DIR "luajit")
+
+	# Copy LuaJIT source to binary dir. LuaJIT builds in-source,
+	# and we don't want to modify the original source tree, so
+	# we copy it.
+	file(COPY libs/${LUAJIT_DIR} DESTINATION ${CMAKE_BINARY_DIR}/libs)
+
+	set(LUAJIT_SOURCE_DIR ${CMAKE_BINARY_DIR}/libs/${LUAJIT_DIR})
+
+	set(LUAJIT_BUILD_SCRIPT "
+		make
+
+		mkdir -p ${CMAKE_BINARY_DIR}/bin
+		cp ${LUAJIT_SOURCE_DIR}/src/libluajit.a ${CMAKE_BINARY_DIR}/bin
+#		cp ${LUAJIT_SOURCE_DIR}/src/libluajit.so ${CMAKE_BINARY_DIR}/bin
+	")
+
+	file(WRITE ${LUAJIT_SOURCE_DIR}/build.sh ${LUAJIT_BUILD_SCRIPT})
+	file(CHMOD ${LUAJIT_SOURCE_DIR}/build.sh PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+
+	ExternalProject_Add(luajit
+			SOURCE_DIR ${LUAJIT_SOURCE_DIR}
+			BUILD_IN_SOURCE 1
+			CONFIGURE_COMMAND ""
+			INSTALL_COMMAND ""
+			BUILD_COMMAND "${LUAJIT_SOURCE_DIR}/build.sh"
+			BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/bin/libluajit.a" "${CMAKE_BINARY_DIR}/bin/libluajit.so"
+	)
+	set_target_properties(luajit PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${LUAJIT_SOURCE_DIR}/src"
+			IMPORTED_IMPLIB "${CMAKE_BINARY_DIR}/bin/libluajit.a"
+			IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/bin/libluajit.so"
+	)
+	set(LUAJIT_LIB ${CMAKE_BINARY_DIR}/bin/libluajit.a)
+	set(LUAJIT_DLL ${CMAKE_BINARY_DIR}/bin/libluajit.so)
+	set(LUAJIT_INCLUDE ${LUAJIT_SOURCE_DIR}/src)
 endif()
+
+target_include_directories(lovedep::Lua INTERFACE ${LUAJIT_INCLUDE} libs/luajit/src/)
+target_link_libraries(lovedep::Lua INTERFACE ${LUAJIT_LIB})
+add_dependencies(lovedep::Lua luajit) # There is probably a better way to do it
 
 ###
 ### No Megasource-specific stuff beyond this point!
@@ -294,31 +425,6 @@ target_link_libraries(love_common PUBLIC
 	lovedep::Lua
 	lovedep::SDL
 )
-
-if (APPLE)
-	target_sources(love_common PRIVATE
-		src/common/apple.mm
-	)
-	target_link_libraries(love_common PUBLIC
-		objc
-		"-framework CoreFoundation"
-	)
-	if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-		target_sources(love_common PRIVATE
-			src/common/macos.mm
-		)
-		target_link_libraries(love_common PUBLIC
-			"-framework AppKit"
-		)
-	else()
-		target_sources(love_common PRIVATE
-			src/common/ios.mm
-		)
-		target_link_libraries(love_common PUBLIC
-			"-framework UIKit"
-		)
-	endif()
-endif()
 
 #
 # love.audio
@@ -653,60 +759,31 @@ target_link_libraries(love_graphics INTERFACE
 	love_graphics_opengl
 )
 
-if(APPLE)
-	add_library(love_graphics_metal STATIC
-		src/modules/graphics/metal/Buffer.h
-		src/modules/graphics/metal/Buffer.mm
-		src/modules/graphics/metal/Graphics.h
-		src/modules/graphics/metal/Graphics.mm
-		src/modules/graphics/metal/GraphicsReadback.h
-		src/modules/graphics/metal/GraphicsReadback.mm
-		src/modules/graphics/metal/Metal.h
-		src/modules/graphics/metal/Metal.mm
-		src/modules/graphics/metal/Shader.h
-		src/modules/graphics/metal/Shader.mm
-		src/modules/graphics/metal/ShaderStage.h
-		src/modules/graphics/metal/ShaderStage.mm
-		src/modules/graphics/metal/StreamBuffer.h
-		src/modules/graphics/metal/StreamBuffer.mm
-		src/modules/graphics/metal/Texture.h
-		src/modules/graphics/metal/Texture.mm
-	)
-	target_link_libraries(love_graphics_metal PUBLIC
-		objc
-		"-framework Metal"
-		"-framework QuartzCore"
-	)
-	target_link_libraries(love_graphics INTERFACE
-		love_graphics_metal
-	)
-else()
-	add_library(love_graphics_vulkan STATIC
-		src/modules/graphics/vulkan/Graphics.h
-		src/modules/graphics/vulkan/Graphics.cpp
-		src/modules/graphics/vulkan/GraphicsReadback.h
-		src/modules/graphics/vulkan/GraphicsReadback.cpp
-		src/modules/graphics/vulkan/Shader.h
-		src/modules/graphics/vulkan/Shader.cpp
-		src/modules/graphics/vulkan/ShaderStage.h
-		src/modules/graphics/vulkan/ShaderStage.cpp
-		src/modules/graphics/vulkan/StreamBuffer.h
-		src/modules/graphics/vulkan/StreamBuffer.cpp
-		src/modules/graphics/vulkan/Buffer.h
-		src/modules/graphics/vulkan/Buffer.cpp
-		src/modules/graphics/vulkan/Texture.h
-		src/modules/graphics/vulkan/Texture.cpp
-		src/modules/graphics/vulkan/Vulkan.h
-		src/modules/graphics/vulkan/Vulkan.cpp
-		src/modules/graphics/vulkan/VulkanWrapper.h
-	)
-	target_link_libraries(love_graphics_vulkan PUBLIC
-		lovedep::SDL
-	)
-	target_link_libraries(love_graphics INTERFACE
-		love_graphics_vulkan
-	)
-endif()
+add_library(love_graphics_vulkan STATIC
+	src/modules/graphics/vulkan/Graphics.h
+	src/modules/graphics/vulkan/Graphics.cpp
+	src/modules/graphics/vulkan/GraphicsReadback.h
+	src/modules/graphics/vulkan/GraphicsReadback.cpp
+	src/modules/graphics/vulkan/Shader.h
+	src/modules/graphics/vulkan/Shader.cpp
+	src/modules/graphics/vulkan/ShaderStage.h
+	src/modules/graphics/vulkan/ShaderStage.cpp
+	src/modules/graphics/vulkan/StreamBuffer.h
+	src/modules/graphics/vulkan/StreamBuffer.cpp
+	src/modules/graphics/vulkan/Buffer.h
+	src/modules/graphics/vulkan/Buffer.cpp
+	src/modules/graphics/vulkan/Texture.h
+	src/modules/graphics/vulkan/Texture.cpp
+	src/modules/graphics/vulkan/Vulkan.h
+	src/modules/graphics/vulkan/Vulkan.cpp
+	src/modules/graphics/vulkan/VulkanWrapper.h
+)
+target_link_libraries(love_graphics_vulkan PUBLIC
+	lovedep::SDL
+)
+target_link_libraries(love_graphics INTERFACE
+	love_graphics_vulkan
+)
 
 #
 # love.image
@@ -1203,27 +1280,27 @@ add_library(love_video_root STATIC
 )
 target_link_libraries(love_video_root PUBLIC
 	lovedep::Lua
-	lovedep::Theora
+#	lovedep::Theora
 	lovedep::Ogg
 )
 
-add_library(love_video_theora STATIC
-	src/modules/video/theora/Video.cpp
-	src/modules/video/theora/Video.h
-	src/modules/video/theora/OggDemuxer.cpp
-	src/modules/video/theora/OggDemuxer.h
-	src/modules/video/theora/TheoraVideoStream.cpp
-	src/modules/video/theora/TheoraVideoStream.h
-)
-target_link_libraries(love_video_theora PUBLIC
-	lovedep::Theora
-	lovedep::Ogg
-)
+#add_library(love_video_theora STATIC
+#	src/modules/video/theora/Video.cpp
+#	src/modules/video/theora/Video.h
+#	src/modules/video/theora/OggDemuxer.cpp
+#	src/modules/video/theora/OggDemuxer.h
+#	src/modules/video/theora/TheoraVideoStream.cpp
+#	src/modules/video/theora/TheoraVideoStream.h
+#)
+#target_link_libraries(love_video_theora PUBLIC
+#	lovedep::Theora
+#	lovedep::Ogg
+#)
 
 add_library(love_video INTERFACE)
 target_link_libraries(love_video INTERFACE
 	love_video_root
-	love_video_theora
+#	love_video_theora
 )
 
 #
@@ -1643,14 +1720,6 @@ add_library(love_3p_luahttps
 )
 target_link_libraries(love_3p_luahttps lovedep::Lua)
 
-if (APPLE)
-	target_sources(love_3p_luahttps PRIVATE
-		src/libraries/luahttps/src/apple/NSURLClient.mm
-		src/libraries/luahttps/src/apple/NSURLClient.h
-	)
-	target_compile_options(love_3p_luahttps PRIVATE -fobjc-arc)
-endif()
-
 if(MSVC)
 	target_link_libraries(love_3p_luahttps
 		ws2_32
@@ -1723,15 +1792,6 @@ add_library(love_3p_physfs
 	src/libraries/physfs/physfs.h
 )
 love_disable_warnings(love_3p_physfs)
-
-if(APPLE)
-	target_sources(love_3p_physfs PRIVATE
-		src/libraries/physfs/physfs_platform_apple.m
-	)
-	target_link_libraries(love_3p_physfs INTERFACE
-		"-framework IOKit"
-	)
-endif()
 
 #
 # spirv_cross
@@ -1965,7 +2025,7 @@ love_group_projects(NAME "liblove/libraries" NESTED TARGETS ${LIBLOVE_LIBRARIES}
 love_group_projects(NAME "liblove" TARGETS liblove ${LOVE_EXTRA_DEPENDECIES})
 
 love_group_projects(NAME "lovedep" TARGETS lovedep::SDL lovedep::Freetype lovedep::Harfbuzz lovedep::OpenAL lovedep::Modplug lovedep::Theora lovedep::Vorbis lovedep::Ogg lovedep::Zlib lovedep::Lua)
-love_group_projects(NAME "lovedep" TARGETS lua51 alcommon al-excommon harfbuzz-subset zlib)
+#love_group_projects(NAME "lovedep" TARGETS lua51 alcommon al-excommon harfbuzz-subset zlibstatic)
 
 
 if(MSVC)
@@ -2039,7 +2099,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
 	# CPack
 	###################################
 	install(TARGETS love lovec liblove RUNTIME DESTINATION .)
-	install(PROGRAMS $<TARGET_FILE:${MEGA_SDL3}> DESTINATION .)
+#	install(PROGRAMS $<TARGET_FILE:${MEGA_SDL3}> DESTINATION .)
 
 	# Our install script (and NSIS) doesn't fully support Windows ARM64 yet.
 	if(MEGA_ARM64)
@@ -2161,7 +2221,7 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 
 	configure_file(platform/unix/love.desktop.in love.desktop @ONLY)
 
-	install(TARGETS love liblove)
+	install(TARGETS love liblove COMPONENT love)
 	install(FILES platform/unix/love.6
 			DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
 			RENAME love.1)
@@ -2173,4 +2233,43 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
 			DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pixmaps)
 	install(FILES platform/unix/application-x-love-game.svg
 			DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/mimetypes)
+
+	include(InstallRequiredSystemLibraries)
+
+	set(CPACK_PACKAGE_NAME "love")
+	set(CPACK_PACKAGE_VENDOR "love2d.org")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "LOVE -- It's awesome")
+	set(CPACK_PACKAGE_ICON "love")
+	set(CPACK_PACKAGE_VERSION "${LOVE_VERSION_STR}")
+	set(CPACK_PACKAGE_VERSION_MAJOR "${LOVE_VERSION_MAJOR}")
+	set(CPACK_PACKAGE_VERSION_MINOR "${LOVE_VERSION_MINOR}")
+	set(CPACK_PACKAGE_VERSION_PATCH "${LOVE_VERSION_REV}")
+	set(CPACK_PACKAGE_INSTALL_DIRECTORY "LOVE")
+	set(CPACK_PACKAGE_EXECUTABLES "${LOVE_EXE_NAME};LOVE")
+	set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/readme.md")
+	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/license.txt")
+
+	if(APPIMAGE)
+		install(CODE [[
+		file(GET_RUNTIME_DEPENDENCIES
+			EXECUTABLES $<TARGET_FILE:love>
+			RESOLVED_DEPENDENCIES_VAR resolved_deps
+		)
+
+		foreach(dep ${resolved_deps})
+			# copy the symlink
+			file(COPY ${dep} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+
+			# Resolve the real path of the dependency (follows symlinks)
+			file(REAL_PATH ${dep} resolved_dep_path)
+
+			# Copy the resolved file to the destination
+			file(COPY ${resolved_dep_path} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+		endforeach()
+	]] COMPONENT dynamic_libs)
+		install(FILES platform/unix/love.png
+				DESTINATION .)
+	endif ()
+
+	include(CPack)
 endif()
